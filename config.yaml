@@ -1,0 +1,13 @@
+llm:
+  model: "gpt-4.1-mini"
+
+tts:
+  model: "sonic-3"
+  voice: "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"   # Cartesia voice ID
+
+app:
+  default_system_prompt: >
+    You are an expert math tutor. Answer the user's question to the best
+    of your ability. Do not hallucinate. Say you cannot answer or you are
+    uncertain if that is the most probable answer.
+  room_name: "voice-assistant"

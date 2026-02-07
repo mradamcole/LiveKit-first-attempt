@@ -1,0 +1,7 @@
+# Override .gitignore to allow Cursor AI to access .env files
+!.env
+!.env.*
+!.env.local
+!.env.development
+!.env.production
+!.env.test

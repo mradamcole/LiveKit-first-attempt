@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKit Voice Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>LiveKit Voice Assistant</h1>
+      <div id="status-bar">
+        <span id="connection-status" class="status-indicator disconnected">Disconnected</span>
+        <span id="agent-state" class="status-indicator" hidden>Agent: --</span>
+      </div>
+    </header>
+
+    <section id="system-prompt-section">
+      <label for="system-prompt">System Prompt</label>
+      <textarea id="system-prompt" rows="4" placeholder="Loading..."></textarea>
+      <div id="prompt-status"></div>
+    </section>
+
+    <section id="transcript-section">
+      <div id="transcript-panel">
+        <div id="transcript-messages">
+          <!-- Messages will be appended here -->
+        </div>
+      </div>
+    </section>
+
+    <section id="control-bar">
+      <button id="connect-btn" class="btn btn-primary">Connect</button>
+      <button id="mic-btn" class="btn btn-mic" disabled>
+        <svg id="mic-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+        <span id="mic-label">Start Mic</span>
+      </button>
+    </section>
+
+    <!-- Hidden audio element for agent TTS playback -->
+    <audio id="agent-audio" autoplay></audio>
+  </div>
+
+  <div id="browser-warning" hidden>
+    <p>This app requires <strong>Chrome</strong> or <strong>Edge</strong> for speech recognition (Web Speech API).</p>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

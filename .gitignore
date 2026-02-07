@@ -1,0 +1,32 @@
+# Sensitive credentials
+.env.local
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+backend/venv/
+
+# Node (in case any local tooling is added later)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Plan files (not part of the app)
+plana.md
+planb.md
+planc.md
+masterplan.md
+todo.txt
