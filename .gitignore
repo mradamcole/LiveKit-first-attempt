@@ -24,6 +24,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Runtime files (PIDs, logs)
+.pids/
+.logs/
+
 # Plan files (not part of the app)
 plana.md
 planb.md

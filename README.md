@@ -92,23 +92,45 @@ source venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
 ```
 
-### 3. Start the token server (Terminal 1)
+### 3. Start the app
 
-This also serves the frontend static files:
+The easiest way is with the startup script (from the project root):
+
+```bash
+./start.sh start      # Start token server + agent in background
+./start.sh status     # Check if services are running
+./start.sh restart    # Restart everything
+./start.sh stop       # Shut down all services
+```
+
+The script will:
+- Activate the virtual environment automatically
+- Detect port conflicts and tell you if the port is already held by a previous instance of the app
+- Store logs in `.logs/` (token_server.log, agent.log)
+
+<details>
+<summary>Manual start (two terminals)</summary>
+
+**Terminal 1 – Token server** (also serves the frontend):
 
 ```bash
 cd backend
+source venv/Scripts/activate   # Windows Git Bash
+# source venv/bin/activate     # Linux / macOS / WSL
 uvicorn token_server:app --port 3000
 ```
 
-### 4. Start the agent (Terminal 2)
+**Terminal 2 – Agent:**
 
 ```bash
 cd backend
+source venv/Scripts/activate   # Windows Git Bash
+# source venv/bin/activate     # Linux / macOS / WSL
 python agent.py dev
 ```
+</details>
 
-### 5. Open the app
+### 4. Open the app
 
 Navigate to **http://localhost:3000** in Chrome or Edge.
 
@@ -121,6 +143,7 @@ Navigate to **http://localhost:3000** in Chrome or Edge.
 ## Project Structure
 
 ```
+├── start.sh                 # Service manager (start / stop / restart / status)
 ├── config.yaml              # Model names, voice ID, default prompt, room name
 ├── .env.local               # API keys and LiveKit credentials (git-ignored)
 ├── backend/

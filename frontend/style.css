@@ -109,6 +109,22 @@ header h1 {
   color: #1e40af;
 }
 
+.status-indicator.agent-connected {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-indicator.agent-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-indicator.agent-missing {
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.7rem;
+}
+
 /* ===== System Prompt ===== */
 #system-prompt-section {
   margin-bottom: 1rem;

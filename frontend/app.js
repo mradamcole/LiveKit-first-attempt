@@ -40,6 +40,7 @@ let isListening = false;
 let recognition = null;
 let currentInterimEl = null;
 let promptDebounceTimer = null;
+let agentWaitTimer = null;
 
 // ===== Browser Check =====
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -90,8 +91,9 @@ async function connect() {
   room.on(RoomEvent.ParticipantConnected, (participant) => {
     if (participant.kind === ParticipantKind.AGENT) {
       agentIdentity = participant.identity;
-      agentStateEl.hidden = false;
+      clearTimeout(agentWaitTimer);
       agentStateEl.textContent = 'Agent: connected';
+      agentStateEl.className = 'status-indicator agent-connected';
       // Send current system prompt to the newly connected agent
       sendSystemPrompt();
     }
@@ -136,14 +138,29 @@ async function connect() {
   await room.connect(url, token);
 
   // Check if agent is already in the room
+  let agentFound = false;
   for (const [, participant] of room.remoteParticipants) {
     if (participant.kind === ParticipantKind.AGENT) {
       agentIdentity = participant.identity;
-      agentStateEl.hidden = false;
       agentStateEl.textContent = 'Agent: connected';
+      agentStateEl.className = 'status-indicator agent-connected';
       sendSystemPrompt();
+      agentFound = true;
       break;
     }
+  }
+
+  // Show agent waiting status if agent hasn't joined yet
+  if (!agentFound) {
+    agentStateEl.textContent = 'Agent: waiting\u2026';
+    agentStateEl.className = 'status-indicator agent-waiting';
+    // Warn after 10 seconds if agent still hasn't connected
+    agentWaitTimer = setTimeout(() => {
+      if (!agentIdentity) {
+        agentStateEl.textContent = 'Agent: not running';
+        agentStateEl.className = 'status-indicator agent-missing';
+      }
+    }, 10_000);
   }
 
   // Update UI
@@ -153,6 +170,7 @@ async function connect() {
 }
 
 function disconnect() {
+  clearTimeout(agentWaitTimer);
   if (room) {
     room.disconnect();
     room = null;
@@ -162,7 +180,8 @@ function disconnect() {
   connectBtn.textContent = 'Connect';
   connectBtn.classList.remove('connected');
   micBtn.disabled = true;
-  agentStateEl.hidden = true;
+  agentStateEl.textContent = 'Agent: not started';
+  agentStateEl.className = 'status-indicator disconnected';
   updateConnectionStatus(ConnectionState.Disconnected);
 }
 
