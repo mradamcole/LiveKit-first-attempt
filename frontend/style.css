@@ -276,6 +276,10 @@ header h1 {
 }
 
 /* ===== Browser Warning ===== */
+#browser-warning[hidden] {
+  display: none;
+}
+
 #browser-warning {
   position: fixed;
   inset: 0;

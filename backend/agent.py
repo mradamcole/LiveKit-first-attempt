@@ -31,6 +31,9 @@ server = AgentServer()
 async def entrypoint(ctx: JobContext):
     """Entry point for each agent session."""
 
+    # Connect to the room FIRST so local_participant is available
+    await ctx.connect()
+
     agent = Agent(instructions=config["app"]["default_system_prompt"])
 
     session = AgentSession(
@@ -43,9 +46,10 @@ async def entrypoint(ctx: JobContext):
     )
 
     # RPC: frontend can update the system prompt at runtime
+    # (must be after ctx.connect() so local_participant exists)
     @ctx.room.local_participant.register_rpc_method("update_system_prompt")
     async def on_update_prompt(data: rtc.RpcInvocationData) -> str:
-        agent.instructions = data.payload
+        await agent.update_instructions(data.payload)
         logger.info("System prompt updated via RPC")
         return "ok"
 
