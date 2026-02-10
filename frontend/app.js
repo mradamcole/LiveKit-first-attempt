@@ -23,7 +23,6 @@ import {
 // ===== DOM Elements =====
 const connectBtn = document.getElementById('connect-btn');
 const micBtn = document.getElementById('mic-btn');
-const micLabel = document.getElementById('mic-label');
 const textInput = document.getElementById('text-input');
 const textInputForm = document.getElementById('text-input-form');
 const sendBtn = document.getElementById('send-btn');
@@ -40,6 +39,8 @@ const appEl = document.getElementById('app');
 let room = null;
 let agentIdentity = null;
 let isListening = false;
+let micPaused = false;       // true when mic is temporarily paused because agent is speaking
+let micWasActive = false;    // true if mic was active before the agent started speaking
 let recognition = null;
 let currentInterimEl = null;
 let promptDebounceTimer = null;
@@ -113,13 +114,27 @@ async function connect() {
     }
   });
 
-  // Agent state changes
+  // Agent state changes + STT gating to prevent echo
   room.on(RoomEvent.ParticipantAttributesChanged, (changedAttributes, participant) => {
     if (participant.identity === agentIdentity) {
       const state = participant.attributes['lk.agent.state'];
       if (state) {
         agentStateEl.textContent = `Agent: ${state}`;
         agentStateEl.className = `status-indicator agent-${state}`;
+
+        // Pause mic when agent is speaking or thinking to prevent TTS echo
+        if (state === 'speaking' || state === 'thinking') {
+          if (isListening) {
+            micWasActive = true;
+            pauseListening();
+          }
+        }
+        // Auto-resume mic when agent returns to listening
+        else if (state === 'listening') {
+          if (micPaused && micWasActive) {
+            resumeListening();
+          }
+        }
       }
     }
   });
@@ -189,6 +204,9 @@ function disconnect() {
   }
   agentIdentity = null;
   stopListening();
+  micPaused = false;
+  micWasActive = false;
+  updateMicUI();
   connectBtn.textContent = 'Connect';
   connectBtn.classList.remove('connected');
   micBtn.disabled = true;
@@ -275,8 +293,8 @@ function startListening() {
   };
 
   recognition.onend = () => {
-    // Re-start if we're still supposed to be listening
-    if (isListening) {
+    // Re-start if we're still supposed to be listening (and not paused)
+    if (isListening && !micPaused) {
       try {
         recognition.start();
       } catch (e) {
@@ -287,23 +305,79 @@ function startListening() {
 
   recognition.start();
   isListening = true;
-  micBtn.classList.add('active');
-  micLabel.textContent = 'Stop';
+  micPaused = false;
+  micWasActive = false;
+  updateMicUI();
 }
 
 function stopListening() {
   isListening = false;
+  micPaused = false;
+  micWasActive = false;
   if (recognition) {
     recognition.abort();
     recognition = null;
   }
   clearInterim();
-  micBtn.classList.remove('active');
-  micLabel.textContent = 'Mic';
+  updateMicUI();
+}
+
+/** Temporarily pause STT (agent is speaking) -- mic shows paused state */
+function pauseListening() {
+  if (!isListening) return;
+  micPaused = true;
+  if (recognition) {
+    recognition.abort();
+    recognition = null;
+  }
+  clearInterim();
+  updateMicUI();
+}
+
+/** Resume STT after agent finishes speaking */
+function resumeListening() {
+  if (!micPaused) return;
+  micPaused = false;
+  micWasActive = false;
+  // Re-create recognition and start
+  startListening();
+}
+
+/** Update the mic button visual state (off / active / paused) */
+function updateMicUI() {
+  micBtn.classList.remove('active', 'paused');
+  if (micPaused) {
+    micBtn.classList.add('paused');
+    micBtn.title = 'Mic paused — click to interrupt agent and resume';
+  } else if (isListening) {
+    micBtn.classList.add('active');
+    micBtn.title = 'Listening — click to stop';
+  } else {
+    micBtn.title = hasSpeechAPI ? 'Click to start voice input' : 'Voice input requires Chrome or Edge';
+  }
+}
+
+/** Interrupt the agent (stop TTS/LLM) and resume listening */
+async function stopAgent() {
+  if (!room || !agentIdentity) return;
+  try {
+    await room.localParticipant.performRpc({
+      destinationIdentity: agentIdentity,
+      method: 'interrupt',
+      payload: '',
+    });
+  } catch (err) {
+    console.error('Failed to interrupt agent:', err);
+  }
+  // Resume listening immediately
+  resumeListening();
 }
 
 micBtn.addEventListener('click', () => {
-  if (isListening) {
+  if (micPaused) {
+    // Clicking paused mic = interrupt agent + resume listening
+    stopAgent();
+  } else if (isListening) {
     stopListening();
   } else {
     startListening();

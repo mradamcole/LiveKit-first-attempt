@@ -53,6 +53,16 @@ async def entrypoint(ctx: JobContext):
         logger.info("System prompt updated via RPC")
         return "ok"
 
+    # RPC: frontend can interrupt current agent speech/generation
+    @ctx.room.local_participant.register_rpc_method("interrupt")
+    async def on_interrupt(data: rtc.RpcInvocationData) -> str:
+        try:
+            await session.interrupt()
+            logger.info("Agent interrupted via RPC")
+        except RuntimeError:
+            logger.debug("Interrupt called but no active generation to stop")
+        return "ok"
+
     await session.start(
         agent=agent,
         room=ctx.room,
