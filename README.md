@@ -118,6 +118,8 @@ cd backend
 source venv/Scripts/activate   # Windows Git Bash
 # source venv/bin/activate     # Linux / macOS / WSL
 uvicorn token_server:app --port 3000
+# or...
+cd backend && source venv/Scripts/activate && uvicorn token_server:app --port 3000
 ```
 
 **Terminal 2 – Agent:**
@@ -127,6 +129,8 @@ cd backend
 source venv/Scripts/activate   # Windows Git Bash
 # source venv/bin/activate     # Linux / macOS / WSL
 python agent.py dev
+# or...
+cd backend && source venv/Scripts/activate && python agent.py dev
 ```
 </details>
 
