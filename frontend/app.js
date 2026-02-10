@@ -24,6 +24,9 @@ import {
 const connectBtn = document.getElementById('connect-btn');
 const micBtn = document.getElementById('mic-btn');
 const micLabel = document.getElementById('mic-label');
+const textInput = document.getElementById('text-input');
+const textInputForm = document.getElementById('text-input-form');
+const sendBtn = document.getElementById('send-btn');
 const systemPromptEl = document.getElementById('system-prompt');
 const promptStatus = document.getElementById('prompt-status');
 const transcriptMessages = document.getElementById('transcript-messages');
@@ -45,9 +48,11 @@ let thinkingBubbleEl = null;
 
 // ===== Browser Check =====
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) {
+const hasSpeechAPI = !!SpeechRecognition;
+if (!hasSpeechAPI) {
   browserWarning.hidden = false;
-  appEl.style.display = 'none';
+  micBtn.classList.add('no-speech-api');
+  micBtn.title = 'Voice input requires Chrome or Edge';
 }
 
 // ===== Init: Load Config =====
@@ -168,7 +173,12 @@ async function connect() {
   // Update UI
   connectBtn.textContent = 'Disconnect';
   connectBtn.classList.add('connected');
-  micBtn.disabled = false;
+  textInput.disabled = false;
+  sendBtn.disabled = false;
+  textInput.placeholder = 'Type a message...';
+  if (hasSpeechAPI) {
+    micBtn.disabled = false;
+  }
 }
 
 function disconnect() {
@@ -182,6 +192,10 @@ function disconnect() {
   connectBtn.textContent = 'Connect';
   connectBtn.classList.remove('connected');
   micBtn.disabled = true;
+  textInput.disabled = true;
+  sendBtn.disabled = true;
+  textInput.value = '';
+  textInput.placeholder = 'Type a message...';
   agentStateEl.textContent = 'Agent: not started';
   agentStateEl.className = 'status-indicator disconnected';
   updateConnectionStatus(ConnectionState.Disconnected);
@@ -219,7 +233,7 @@ connectBtn.addEventListener('click', () => {
 
 // ===== Web Speech API (STT) =====
 function startListening() {
-  if (!SpeechRecognition || !room) return;
+  if (!hasSpeechAPI || !room) return;
 
   recognition = new SpeechRecognition();
   recognition.continuous = true;
@@ -274,7 +288,7 @@ function startListening() {
   recognition.start();
   isListening = true;
   micBtn.classList.add('active');
-  micLabel.textContent = 'Stop Mic';
+  micLabel.textContent = 'Stop';
 }
 
 function stopListening() {
@@ -285,7 +299,7 @@ function stopListening() {
   }
   clearInterim();
   micBtn.classList.remove('active');
-  micLabel.textContent = 'Start Mic';
+  micLabel.textContent = 'Mic';
 }
 
 micBtn.addEventListener('click', () => {
@@ -423,3 +437,15 @@ function scrollToBottom() {
   const panel = document.getElementById('transcript-panel');
   panel.scrollTop = panel.scrollHeight;
 }
+
+// ===== Text Input =====
+textInputForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = textInput.value.trim();
+  if (!text || !room) return;
+
+  addMessage('user', text);
+  sendTextToAgent(text);
+  textInput.value = '';
+  textInput.focus();
+});

@@ -1,303 +1,298 @@
-#!/bin/bash
-# ============================================================
-#  LiveKit Voice Assistant – Service Manager
-# ============================================================
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  LiveKit Voice App – Service Manager
+#
 #  Usage:
-#    ./start.sh start     Start token server + agent
+#    ./start.sh start     Start LiveKit server, token server & agent
 #    ./start.sh stop      Stop all services
-#    ./start.sh restart   Restart all services
-#    ./start.sh status    Show service status
-# ============================================================
+#    ./start.sh restart   Restart everything
+#    ./start.sh status    Show which services are running
+#    ./start.sh logs      Tail all log files
+# ─────────────────────────────────────────────────────────────
 
-# --- Resolve paths relative to this script ---
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$SCRIPT_DIR/backend"
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$ROOT_DIR/backend"
+VENV_DIR="$BACKEND_DIR/venv"
+LOG_DIR="$ROOT_DIR/.logs"
+PIDFILE_DIR="$ROOT_DIR/.pids"
+
+# Ports
+LIVEKIT_PORT=7880
 TOKEN_PORT=3000
 
-PID_DIR="$SCRIPT_DIR/.pids"
-LOG_DIR="$SCRIPT_DIR/.logs"
-TOKEN_PID_FILE="$PID_DIR/token_server.pid"
-AGENT_PID_FILE="$PID_DIR/agent.pid"
-TOKEN_LOG="$LOG_DIR/token_server.log"
-AGENT_LOG="$LOG_DIR/agent.log"
-
-# --- Colours ---
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
-# --- Platform detection ---
-if [[ "$OSTYPE" == msys* || "$OSTYPE" == mingw* || "$OSTYPE" == cygwin* ]]; then
-    VENV_ACTIVATE="$BACKEND_DIR/venv/Scripts/activate"
-    IS_WINDOWS=true
-else
-    VENV_ACTIVATE="$BACKEND_DIR/venv/bin/activate"
-    IS_WINDOWS=false
-fi
+# ── Helpers ──────────────────────────────────────────────────
 
-mkdir -p "$PID_DIR" "$LOG_DIR"
+log_info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
-# ---------------------------------------------------------------
-#  Helpers
-# ---------------------------------------------------------------
+ensure_dirs() {
+    mkdir -p "$LOG_DIR" "$PIDFILE_DIR"
+}
 
-# Get the Windows PID listening on $TOKEN_PORT (empty if none)
-port_pid() {
-    if $IS_WINDOWS; then
-        netstat -ano 2>/dev/null \
-            | grep ":${TOKEN_PORT} " \
-            | grep "LISTENING" \
-            | awk '{print $NF}' \
-            | head -1
-    else
-        lsof -ti tcp:"${TOKEN_PORT}" 2>/dev/null | head -1
+check_venv() {
+    if [ ! -f "$VENV_DIR/bin/activate" ]; then
+        log_error "Virtual environment not found at $VENV_DIR"
+        log_info  "Create it with:  cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+        exit 1
     fi
 }
 
-# Check whether a given PID's command line contains "token_server"
-is_our_token_server() {
-    local pid="$1"
-    if $IS_WINDOWS; then
-        wmic process where "processid=$pid" get commandline 2>/dev/null \
-            | grep -qi "token_server"
-    else
-        ps -p "$pid" -o args= 2>/dev/null | grep -qi "token_server"
+check_livekit_server() {
+    if ! command -v livekit-server &>/dev/null; then
+        log_error "livekit-server not found. Install it with:  brew install livekit"
+        exit 1
     fi
 }
 
-# Check whether a PID is alive
-is_alive() {
-    local pid="$1"
-    [[ -z "$pid" ]] && return 1
-    if $IS_WINDOWS; then
-        wmic process where "processid=$pid" get processid 2>/dev/null \
-            | grep -q "$pid"
-    else
-        kill -0 "$pid" 2>/dev/null
+port_in_use() {
+    lsof -i :"$1" &>/dev/null
+}
+
+pid_alive() {
+    [ -n "$1" ] && kill -0 "$1" 2>/dev/null
+}
+
+read_pid() {
+    local pidfile="$PIDFILE_DIR/$1.pid"
+    if [ -f "$pidfile" ]; then
+        cat "$pidfile"
     fi
 }
 
-# Kill a process (and its tree on Windows)
-kill_pid() {
-    local pid="$1"
-    if $IS_WINDOWS; then
-        taskkill //PID "$pid" //F //T >/dev/null 2>&1
+write_pid() {
+    echo "$2" > "$PIDFILE_DIR/$1.pid"
+}
+
+remove_pid() {
+    rm -f "$PIDFILE_DIR/$1.pid"
+}
+
+# ── Start functions ──────────────────────────────────────────
+
+start_livekit() {
+    local pid
+    pid=$(read_pid livekit)
+    if pid_alive "$pid"; then
+        log_warn "LiveKit server already running (PID $pid)"
+        return 0
+    fi
+
+    if port_in_use "$LIVEKIT_PORT"; then
+        log_error "Port $LIVEKIT_PORT already in use. Another LiveKit server running?"
+        log_info  "Run:  lsof -i :$LIVEKIT_PORT  to check"
+        return 1
+    fi
+
+    log_info "Starting LiveKit server on port $LIVEKIT_PORT ..."
+    livekit-server --dev > "$LOG_DIR/livekit.log" 2>&1 &
+    local new_pid=$!
+    write_pid livekit "$new_pid"
+
+    # Wait briefly and verify it started
+    sleep 1
+    if pid_alive "$new_pid"; then
+        log_info "LiveKit server started (PID $new_pid)"
     else
-        kill "$pid" 2>/dev/null
-        sleep 1
-        kill -9 "$pid" 2>/dev/null || true
+        log_error "LiveKit server failed to start. Check $LOG_DIR/livekit.log"
+        return 1
     fi
 }
-
-# Read a stored PID from file (empty string if missing)
-read_pid_file() {
-    [[ -f "$1" ]] && cat "$1" || echo ""
-}
-
-# ---------------------------------------------------------------
-#  Token Server
-# ---------------------------------------------------------------
 
 start_token_server() {
-    echo -e "${YELLOW}> Starting token server on port ${TOKEN_PORT}...${NC}"
-
-    # --- Port-conflict detection ---
-    local existing
-    existing=$(port_pid)
-    if [[ -n "$existing" ]]; then
-        if is_our_token_server "$existing"; then
-            echo -e "${GREEN}  Token server is already running (PID $existing).${NC}"
-            echo "$existing" > "$TOKEN_PID_FILE"
-            return 0
-        else
-            echo -e "${RED}  Port $TOKEN_PORT is already in use by another process (PID $existing):${NC}"
-            if $IS_WINDOWS; then
-                wmic process where "processid=$existing" get name,commandline 2>/dev/null | tail -n +2 | head -3
-            else
-                ps -p "$existing" -o pid,args 2>/dev/null
-            fi
-            echo ""
-            echo -e "${RED}  Free the port or change TOKEN_PORT in this script, then try again.${NC}"
-            return 1
-        fi
+    local pid
+    pid=$(read_pid token_server)
+    if pid_alive "$pid"; then
+        log_warn "Token server already running (PID $pid)"
+        return 0
     fi
 
-    # --- Launch ---
-    source "$VENV_ACTIVATE"
+    if port_in_use "$TOKEN_PORT"; then
+        log_error "Port $TOKEN_PORT already in use."
+        log_info  "Run:  lsof -i :$TOKEN_PORT  to check"
+        return 1
+    fi
+
+    log_info "Starting token server on port $TOKEN_PORT ..."
     cd "$BACKEND_DIR"
-    uvicorn token_server:app --port "$TOKEN_PORT" >> "$TOKEN_LOG" 2>&1 &
-    local pid=$!
-    echo "$pid" > "$TOKEN_PID_FILE"
+    source "$VENV_DIR/bin/activate"
+    uvicorn token_server:app --port "$TOKEN_PORT" > "$LOG_DIR/token_server.log" 2>&1 &
+    local new_pid=$!
+    write_pid token_server "$new_pid"
 
-    # Wait briefly for it to bind
-    sleep 2
-
-    if is_alive "$pid"; then
-        echo -e "${GREEN}  Token server started (PID $pid).${NC}"
+    sleep 1
+    if pid_alive "$new_pid"; then
+        log_info "Token server started (PID $new_pid)"
     else
-        echo -e "${RED}  Token server failed to start. Check the log:${NC}"
-        echo -e "${CYAN}  $TOKEN_LOG${NC}"
-        tail -5 "$TOKEN_LOG" 2>/dev/null
+        log_error "Token server failed to start. Check $LOG_DIR/token_server.log"
         return 1
     fi
 }
-
-stop_token_server() {
-    echo -e "${YELLOW}> Stopping token server...${NC}"
-
-    local pid
-    pid=$(read_pid_file "$TOKEN_PID_FILE")
-
-    # If PID file is stale, fall back to port check
-    if [[ -z "$pid" ]] || ! is_alive "$pid"; then
-        pid=$(port_pid)
-        if [[ -n "$pid" ]] && is_our_token_server "$pid"; then
-            : # use this pid
-        else
-            echo -e "  Token server is not running."
-            rm -f "$TOKEN_PID_FILE"
-            return 0
-        fi
-    fi
-
-    kill_pid "$pid"
-    rm -f "$TOKEN_PID_FILE"
-    echo -e "${GREEN}  Token server stopped (was PID $pid).${NC}"
-}
-
-# ---------------------------------------------------------------
-#  Agent
-# ---------------------------------------------------------------
 
 start_agent() {
-    echo -e "${YELLOW}> Starting agent...${NC}"
-
-    local old_pid
-    old_pid=$(read_pid_file "$AGENT_PID_FILE")
-    if [[ -n "$old_pid" ]] && is_alive "$old_pid"; then
-        echo -e "${GREEN}  Agent is already running (PID $old_pid).${NC}"
+    local pid
+    pid=$(read_pid agent)
+    if pid_alive "$pid"; then
+        log_warn "Agent already running (PID $pid)"
         return 0
     fi
 
-    source "$VENV_ACTIVATE"
+    log_info "Starting agent ..."
     cd "$BACKEND_DIR"
-    python agent.py dev >> "$AGENT_LOG" 2>&1 &
-    local pid=$!
-    echo "$pid" > "$AGENT_PID_FILE"
+    source "$VENV_DIR/bin/activate"
+    python agent.py dev > "$LOG_DIR/agent.log" 2>&1 &
+    local new_pid=$!
+    write_pid agent "$new_pid"
 
     sleep 2
-
-    if is_alive "$pid"; then
-        echo -e "${GREEN}  Agent started (PID $pid).${NC}"
+    if pid_alive "$new_pid"; then
+        log_info "Agent started (PID $new_pid)"
     else
-        echo -e "${RED}  Agent failed to start. Check the log:${NC}"
-        echo -e "${CYAN}  $AGENT_LOG${NC}"
-        tail -5 "$AGENT_LOG" 2>/dev/null
+        log_error "Agent failed to start. Check $LOG_DIR/agent.log"
         return 1
     fi
 }
 
-stop_agent() {
-    echo -e "${YELLOW}> Stopping agent...${NC}"
+# ── Stop functions ───────────────────────────────────────────
 
+stop_service() {
+    local name="$1"
     local pid
-    pid=$(read_pid_file "$AGENT_PID_FILE")
-    if [[ -z "$pid" ]] || ! is_alive "$pid"; then
-        echo -e "  Agent is not running."
-        rm -f "$AGENT_PID_FILE"
+    pid=$(read_pid "$name")
+
+    if [ -z "$pid" ]; then
+        log_warn "$name: no PID file found"
         return 0
     fi
 
-    kill_pid "$pid"
-    rm -f "$AGENT_PID_FILE"
-    echo -e "${GREEN}  Agent stopped (was PID $pid).${NC}"
-}
-
-# ---------------------------------------------------------------
-#  Status
-# ---------------------------------------------------------------
-
-show_status() {
-    echo ""
-    echo -e "${BOLD}Service Status${NC}"
-    echo -e "${BOLD}──────────────${NC}"
-
-    # Token server
-    local t_pid
-    t_pid=$(read_pid_file "$TOKEN_PID_FILE")
-    local p_pid
-    p_pid=$(port_pid)
-
-    if [[ -n "$t_pid" ]] && is_alive "$t_pid"; then
-        echo -e "  Token server : ${GREEN}running${NC}  (PID $t_pid, port $TOKEN_PORT)"
-    elif [[ -n "$p_pid" ]] && is_our_token_server "$p_pid"; then
-        echo -e "  Token server : ${GREEN}running${NC}  (PID $p_pid, port $TOKEN_PORT — started outside this script)"
+    if pid_alive "$pid"; then
+        log_info "Stopping $name (PID $pid) ..."
+        kill "$pid" 2>/dev/null
+        # Wait up to 5 seconds for graceful shutdown
+        for i in {1..10}; do
+            if ! pid_alive "$pid"; then
+                break
+            fi
+            sleep 0.5
+        done
+        # Force kill if still alive
+        if pid_alive "$pid"; then
+            log_warn "$name didn't stop gracefully, force killing ..."
+            kill -9 "$pid" 2>/dev/null
+        fi
+        log_info "$name stopped"
     else
-        echo -e "  Token server : ${RED}stopped${NC}"
+        log_warn "$name was not running (stale PID $pid)"
     fi
 
-    # Agent
-    local a_pid
-    a_pid=$(read_pid_file "$AGENT_PID_FILE")
-    if [[ -n "$a_pid" ]] && is_alive "$a_pid"; then
-        echo -e "  Agent        : ${GREEN}running${NC}  (PID $a_pid)"
-    else
-        echo -e "  Agent        : ${RED}stopped${NC}"
-    fi
+    remove_pid "$name"
+}
+
+# ── Commands ─────────────────────────────────────────────────
+
+cmd_start() {
+    ensure_dirs
+    check_livekit_server
+    check_venv
+
+    echo ""
+    echo -e "${CYAN}━━━ Starting LiveKit Voice App ━━━${NC}"
+    echo ""
+
+    start_livekit
+    start_token_server
+    start_agent
+
+    echo ""
+    echo -e "${GREEN}━━━ All services started ━━━${NC}"
+    echo ""
+    echo -e "  Frontend:       ${CYAN}http://localhost:$TOKEN_PORT${NC}"
+    echo -e "  LiveKit server: ${CYAN}ws://localhost:$LIVEKIT_PORT${NC}"
+    echo -e "  Logs:           ${CYAN}$LOG_DIR/${NC}"
+    echo ""
+    echo -e "  Stop with:      ${YELLOW}./start.sh stop${NC}"
+    echo ""
+}
+
+cmd_stop() {
+    ensure_dirs
+
+    echo ""
+    echo -e "${CYAN}━━━ Stopping LiveKit Voice App ━━━${NC}"
+    echo ""
+
+    stop_service agent
+    stop_service token_server
+    stop_service livekit
+
+    echo ""
+    echo -e "${GREEN}━━━ All services stopped ━━━${NC}"
+    echo ""
+}
+
+cmd_restart() {
+    cmd_stop
+    sleep 1
+    cmd_start
+}
+
+cmd_status() {
+    ensure_dirs
+
+    echo ""
+    echo -e "${CYAN}━━━ Service Status ━━━${NC}"
+    echo ""
+
+    for name in livekit token_server agent; do
+        local pid
+        pid=$(read_pid "$name")
+        if pid_alive "$pid"; then
+            echo -e "  ${GREEN}●${NC} $name ${GREEN}running${NC} (PID $pid)"
+        else
+            echo -e "  ${RED}●${NC} $name ${RED}stopped${NC}"
+            [ -n "$pid" ] && remove_pid "$name"
+        fi
+    done
 
     echo ""
 }
 
-# ---------------------------------------------------------------
-#  Main
-# ---------------------------------------------------------------
+cmd_logs() {
+    ensure_dirs
+    if [ ! -d "$LOG_DIR" ] || [ -z "$(ls -A "$LOG_DIR" 2>/dev/null)" ]; then
+        log_warn "No log files found. Start the services first."
+        return
+    fi
+    tail -f "$LOG_DIR"/*.log
+}
+
+# ── Main ─────────────────────────────────────────────────────
 
 case "${1:-}" in
-    start)
-        echo ""
-        start_token_server
-        start_agent
-        echo ""
-        echo -e "${GREEN}${BOLD}App is ready -> http://localhost:${TOKEN_PORT}${NC}"
-        echo -e "Logs: .logs/token_server.log, .logs/agent.log"
-        echo ""
-        ;;
-    stop)
-        echo ""
-        stop_token_server
-        stop_agent
-        echo ""
-        ;;
-    restart)
-        echo ""
-        stop_token_server
-        stop_agent
-        echo -e "${YELLOW}  Waiting for ports to free...${NC}"
-        sleep 2
-        start_token_server
-        start_agent
-        echo ""
-        echo -e "${GREEN}${BOLD}App is ready -> http://localhost:${TOKEN_PORT}${NC}"
-        echo -e "Logs: .logs/token_server.log, .logs/agent.log"
-        echo ""
-        ;;
-    status)
-        show_status
-        ;;
+    start)   cmd_start   ;;
+    stop)    cmd_stop    ;;
+    restart) cmd_restart ;;
+    status)  cmd_status  ;;
+    logs)    cmd_logs    ;;
     *)
         echo ""
-        echo -e "${BOLD}LiveKit Voice Assistant${NC}"
+        echo "Usage: ./start.sh {start|stop|restart|status|logs}"
         echo ""
-        echo "Usage:  ./start.sh <command>"
+        echo "  start    Start LiveKit server, token server & agent"
+        echo "  stop     Stop all services"
+        echo "  restart  Restart everything"
+        echo "  status   Show which services are running"
+        echo "  logs     Tail all log files"
         echo ""
-        echo "Commands:"
-        echo "  start     Start token server + agent"
-        echo "  stop      Stop all services"
-        echo "  restart   Restart all services"
-        echo "  status    Show service status"
-        echo ""
+        exit 1
         ;;
 esac

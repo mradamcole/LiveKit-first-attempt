@@ -265,22 +265,87 @@ header h1 {
   100% { background-position: 100% 0; opacity: 0.35; }
 }
 
-/* ===== Control Bar ===== */
-#control-bar {
+/* ===== Input Bar ===== */
+#input-bar {
   display: flex;
-  gap: 0.75rem;
-  justify-content: center;
-  padding: 1rem 0;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 0;
 }
 
+#text-input-form {
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#text-input {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+#text-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+#text-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#text-input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-send {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.625rem;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#control-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ===== Buttons ===== */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  gap: 0.375rem;
+  padding: 0.625rem 1rem;
   border: none;
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, opacity 0.2s;
@@ -308,6 +373,7 @@ header h1 {
   background: var(--surface);
   color: var(--text);
   border: 2px solid var(--border);
+  padding: 0.5rem 0.75rem;
 }
 
 .btn-mic:hover:not(:disabled) {
@@ -321,6 +387,11 @@ header h1 {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.btn-mic.no-speech-api {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
   50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
@@ -332,21 +403,15 @@ header h1 {
 }
 
 #browser-warning {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 2rem;
-  text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
 }
 
 #browser-warning p {
-  font-size: 1.1rem;
-  color: var(--danger);
-  max-width: 400px;
+  font-size: 0.8rem;
+  color: var(--warning);
+  text-align: center;
 }
 
 /* ===== Scrollbar ===== */

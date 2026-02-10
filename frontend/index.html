@@ -30,17 +30,33 @@
       </div>
     </section>
 
-    <section id="control-bar">
-      <button id="connect-btn" class="btn btn-primary">Connect</button>
-      <button id="mic-btn" class="btn btn-mic" disabled>
-        <svg id="mic-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="23"></line>
-          <line x1="8" y1="23" x2="16" y2="23"></line>
-        </svg>
-        <span id="mic-label">Start Mic</span>
-      </button>
+    <section id="input-bar">
+      <form id="text-input-form" autocomplete="off">
+        <input
+          id="text-input"
+          type="text"
+          placeholder="Type a message..."
+          disabled
+        />
+        <button id="send-btn" type="submit" class="btn btn-send" disabled title="Send message">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+      <div id="control-buttons">
+        <button id="mic-btn" class="btn btn-mic" disabled title="Voice input requires Chrome or Edge">
+          <svg id="mic-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span id="mic-label">Mic</span>
+        </button>
+        <button id="connect-btn" class="btn btn-primary">Connect</button>
+      </div>
     </section>
 
     <!-- Hidden audio element for agent TTS playback -->
@@ -48,7 +64,7 @@
   </div>
 
   <div id="browser-warning" hidden>
-    <p>This app requires <strong>Chrome</strong> or <strong>Edge</strong> for speech recognition (Web Speech API).</p>
+    <p>Voice input requires <strong>Chrome</strong> or <strong>Edge</strong>. You can still type your messages below.</p>
   </div>
 
   <script type="module" src="app.js"></script>
