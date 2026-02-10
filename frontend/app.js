@@ -41,6 +41,7 @@ let recognition = null;
 let currentInterimEl = null;
 let promptDebounceTimer = null;
 let agentWaitTimer = null;
+let thinkingBubbleEl = null;
 
 // ===== Browser Check =====
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -129,6 +130,7 @@ async function connect() {
     if (participantIdentity === agentIdentity || participantIdentity !== room.localParticipant.identity) {
       const text = await reader.readAll();
       if (text.trim()) {
+        removeThinkingBubble();
         addMessage('agent', text);
       }
     }
@@ -298,9 +300,11 @@ micBtn.addEventListener('click', () => {
 async function sendTextToAgent(text) {
   if (!room || !room.localParticipant) return;
   try {
+    showThinkingBubble();
     await room.localParticipant.sendText(text, { topic: 'lk.chat' });
   } catch (err) {
     console.error('Failed to send text:', err);
+    removeThinkingBubble();
   }
 }
 
@@ -377,6 +381,41 @@ function clearInterim() {
   if (currentInterimEl) {
     currentInterimEl.remove();
     currentInterimEl = null;
+  }
+}
+
+// ===== Thinking Bubble =====
+function showThinkingBubble() {
+  removeThinkingBubble();
+
+  thinkingBubbleEl = document.createElement('div');
+  thinkingBubbleEl.className = 'message agent thinking';
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = 'Agent';
+
+  const shimmer = document.createElement('div');
+  shimmer.className = 'thinking-shimmer';
+  // Three animated bars to suggest content loading
+  for (let i = 0; i < 3; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'shimmer-bar';
+    bar.style.animationDelay = `${i * 0.15}s`;
+    bar.style.width = `${85 - i * 20}%`;
+    shimmer.appendChild(bar);
+  }
+
+  thinkingBubbleEl.appendChild(label);
+  thinkingBubbleEl.appendChild(shimmer);
+  transcriptMessages.appendChild(thinkingBubbleEl);
+  scrollToBottom();
+}
+
+function removeThinkingBubble() {
+  if (thinkingBubbleEl) {
+    thinkingBubbleEl.remove();
+    thinkingBubbleEl = null;
   }
 }
 

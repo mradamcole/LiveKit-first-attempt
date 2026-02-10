@@ -230,6 +230,41 @@ header h1 {
   margin-bottom: 0.2rem;
 }
 
+/* ===== Thinking Bubble ===== */
+.message.agent.thinking {
+  min-width: 180px;
+  min-height: 52px;
+}
+
+.thinking-shimmer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.shimmer-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    var(--primary) 25%,
+    #a855f7 50%,
+    var(--primary) 75%,
+    var(--border) 100%
+  );
+  background-size: 300% 100%;
+  animation: shimmer-sweep 1.8s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+@keyframes shimmer-sweep {
+  0%   { background-position: 100% 0; opacity: 0.35; }
+  50%  { background-position: 0% 0;   opacity: 0.6; }
+  100% { background-position: 100% 0; opacity: 0.35; }
+}
+
 /* ===== Control Bar ===== */
 #control-bar {
   display: flex;
