@@ -9,7 +9,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from livekit.agents import AgentServer, AgentSession, Agent, room_io, JobContext
 from livekit.plugins import openai as openai_plugin
-from livekit.plugins import cartesia
 from livekit import rtc
 import yaml
 import logging
@@ -23,6 +22,47 @@ load_dotenv(Path(__file__).parent.parent / ".env.local")
 # Load non-sensitive config
 with open(Path(__file__).parent.parent / "config.yaml") as f:
     config = yaml.safe_load(f)
+
+
+def _build_tts(config: dict):
+    """Return a TTS plugin instance based on config['tts']['engine'].
+
+    Imports are lazy so you only need the pip package for the engine you use.
+
+    Supported engines:
+      - cartesia  : Cloud TTS (requires CARTESIA_API_KEY)
+      - kokoro    : Local TTS via Kokoro-FastAPI server (OpenAI-compatible)
+      - piper     : Local TTS via self-hosted Piper server
+    """
+    engine = config["tts"]["engine"]
+    engine_cfg = config["tts"].get(engine, {})
+
+    if engine == "cartesia":
+        from livekit.plugins import cartesia
+        return cartesia.TTS(
+            model=engine_cfg.get("model", "sonic-3"),
+            voice=engine_cfg.get("voice"),
+        )
+    elif engine == "kokoro":
+        # Kokoro-FastAPI exposes an OpenAI-compatible /v1/audio/speech endpoint,
+        # so we reuse the OpenAI TTS plugin with a custom base_url.
+        return openai_plugin.TTS(
+            model=engine_cfg.get("model", "kokoro"),
+            voice=engine_cfg.get("voice", "af_heart"),
+            speed=engine_cfg.get("speed", 1.0),
+            base_url=engine_cfg.get("base_url", "http://localhost:8880/v1"),
+            api_key=engine_cfg.get("api_key", "not-needed"),
+        )
+    elif engine == "piper":
+        from livekit.plugins import piper_tts
+        return piper_tts.TTS(
+            base_url=engine_cfg.get("base_url", "http://localhost:5000"),
+        )
+    else:
+        raise ValueError(
+            f"Unknown TTS engine '{engine}'. "
+            f"Supported engines: cartesia, kokoro, piper"
+        )
 
 server = AgentServer()
 
@@ -38,10 +78,7 @@ async def entrypoint(ctx: JobContext):
 
     session = AgentSession(
         llm=openai_plugin.LLM(model=config["llm"]["model"]),
-        tts=cartesia.TTS(
-            model=config["tts"]["model"],
-            voice=config["tts"]["voice"],
-        ),
+        tts=_build_tts(config),
         # No stt= or vad= needed -- browser handles STT via Web Speech API
     )
 

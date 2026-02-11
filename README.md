@@ -11,7 +11,7 @@ Mic → Web Speech API
   → interim/final text          ──sendText('lk.chat')──→   receives text
   → display in transcript                                  → LLM (OpenAI)
                                 ←─lk.transcription─────    → streams response text
-  → display agent response                                 → TTS (Cartesia)
+  → display agent response                                 → TTS (configurable)
   → play agent audio            ←─TTS audio track──────    → publishes audio
 
 System prompt textarea          ──performRpc───────────→   updates agent.instructions
@@ -21,7 +21,7 @@ System prompt textarea          ──performRpc──────────�
 
 - **Python 3.9+**
 - **Chrome or Edge** browser (Web Speech API requirement)
-- **API keys** for OpenAI and Cartesia
+- **API keys** for OpenAI (required) and Cartesia (only if using `cartesia` TTS engine)
 
 ## Quick Start
 
@@ -77,10 +77,10 @@ LIVEKIT_URL=ws://localhost:7880
 LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=secret
 OPENAI_API_KEY=sk-your-openai-key
-CARTESIA_API_KEY=your-cartesia-key
+CARTESIA_API_KEY=your-cartesia-key   # only needed when tts.engine is "cartesia"
 ```
 
-Optionally edit `config.yaml` to change the LLM model, TTS voice, default system prompt, or room name.
+Optionally edit `config.yaml` to change the TTS engine, LLM model, voice, default system prompt, or room name. See the [TTS Engine](#tts-engine) section below for details.
 
 ### 2. Install Python dependencies
 
@@ -170,10 +170,43 @@ Navigate to **http://localhost:3000** in Chrome or Edge.
 | Key | Description |
 |-----|-------------|
 | `llm.model` | OpenAI model name (e.g., `gpt-4.1-mini`) |
-| `tts.model` | Cartesia TTS model (e.g., `sonic-3`) |
-| `tts.voice` | Cartesia voice ID |
+| `tts.engine` | TTS engine to use: `cartesia`, `kokoro`, or `piper` |
+| `tts.cartesia.*` | Cartesia-specific settings (`model`, `voice`) |
+| `tts.kokoro.*` | Kokoro-specific settings (`base_url`, `model`, `voice`, `speed`) |
+| `tts.piper.*` | Piper-specific settings (`base_url`) |
 | `app.default_system_prompt` | Default system prompt for the agent |
 | `app.room_name` | LiveKit room name |
+
+### TTS Engine
+
+The TTS engine is selected by setting `tts.engine` in `config.yaml`. Each engine has its own sub-config block. To switch engines, change the `tts.engine` value -- no code changes required.
+
+| Engine | Type | API Key Required | Local Server Required | Notes |
+|--------|------|------------------|-----------------------|-------|
+| `cartesia` | Cloud | Yes (`CARTESIA_API_KEY`) | No | High quality, requires internet and a paid API key |
+| `kokoro` | Local | No | Yes | Good quality, runs on CPU or GPU, no cloud costs |
+| `piper` | Local | No | Yes | Fast and lightweight, best for CPU-only machines |
+
+**Kokoro** uses a local [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) server that exposes an OpenAI-compatible endpoint. Start it before running the agent:
+
+```bash
+# See https://github.com/remsky/Kokoro-FastAPI for full setup
+docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
+```
+
+**Piper** uses a self-hosted [Piper TTS](https://github.com/OHF-Voice/piper1-gpl) web server:
+
+```bash
+# See https://github.com/OHF-Voice/piper1-gpl for full setup
+# Server should be reachable at http://localhost:5000
+```
+
+Example -- switch to local Kokoro TTS:
+
+```yaml
+tts:
+  engine: "kokoro"
+```
 
 ### `.env.local`
 
@@ -183,7 +216,7 @@ Navigate to **http://localhost:3000** in Chrome or Edge.
 | `LIVEKIT_API_KEY` | LiveKit API key |
 | `LIVEKIT_API_SECRET` | LiveKit API secret |
 | `OPENAI_API_KEY` | OpenAI API key |
-| `CARTESIA_API_KEY` | Cartesia API key |
+| `CARTESIA_API_KEY` | Cartesia API key (only needed when `tts.engine` is `cartesia`) |
 
 ## How It Works
 
@@ -203,7 +236,7 @@ Navigate to **http://localhost:3000** in Chrome or Edge.
 | Text transport | LiveKit text streams (`lk.chat`, `lk.transcription`) |
 | Prompt updates | LiveKit RPC |
 | LLM | OpenAI (via `livekit-plugins-openai`) |
-| TTS | Cartesia (via `livekit-plugins-cartesia`) |
+| TTS | Cartesia, Kokoro, or Piper (configurable via `config.yaml`) |
 | Agent framework | LiveKit Agents SDK (Python) |
 | Token server | FastAPI |
 | Frontend | Vanilla HTML/JS/CSS |

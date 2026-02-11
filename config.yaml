@@ -2,8 +2,20 @@ llm:
   model: "gpt-4.1-mini"
 
 tts:
-  model: "sonic-3"
-  voice: "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"   # Cartesia voice ID
+  engine: "kokoro"        # "cartesia" | "kokoro" | "piper"
+
+  cartesia:                                 # See docs/cartesia-readme.md for setup
+    model: "sonic-3"
+    voice: "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
+
+  kokoro:                                   # See docs/kokoro-readme.md for setup
+    base_url: "http://localhost:8880/v1"   # Kokoro-FastAPI server
+    model: "kokoro"
+    voice: "af_heart"
+    speed: 1.0
+
+  piper:                                    # See docs/piper-readme.md for setup
+    base_url: "http://localhost:5000"      # Piper TTS server
 
 app:
   default_system_prompt: >
