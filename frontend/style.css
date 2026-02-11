@@ -341,10 +341,12 @@ header h1 {
   cursor: not-allowed;
 }
 
-#control-buttons {
-  display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
+/* Connect button inside status bar */
+#status-bar .btn-primary {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  margin-left: 0.25rem;
 }
 
 /* ===== Buttons ===== */
