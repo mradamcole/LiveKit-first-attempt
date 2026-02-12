@@ -15,7 +15,7 @@ llm:
     cost: $0.300 / $2.50
 tts:
   engine: kokoro
-  voice: text_only
+  voice: piper_default
   voices:
   - id: text_only
     label: Text Only
@@ -48,11 +48,11 @@ tts:
     engine: kokoro
     voice_id: bm_george
   - id: cartesia_sonic
-    label: 'Cartesia: Sonic 3'
+    label: 'Cartesia: Sonic 3 (cloud)'
     engine: cartesia
     voice_id: 9626c31c-bec5-4cca-baa8-f8ba9e84c8bc
   - id: piper_default
-    label: Piper (Local)
+    label: Piper
     engine: piper
   cartesia:
     model: sonic-3
@@ -63,7 +63,7 @@ tts:
     voice: af_heart
     speed: 1.0
   piper:
-    base_url: http://localhost:5000
+    base_url: http://localhost:8881
 app:
   default_system_prompt: 'You are an expert math tutor. Answer the user''s question
     to the best of your ability. Do not hallucinate. Say you cannot answer or you

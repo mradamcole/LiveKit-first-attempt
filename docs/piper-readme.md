@@ -14,19 +14,23 @@ Piper is a fast, lightweight, local text-to-speech engine. It runs on your machi
 **Option A -- Docker (recommended):**
 
 ```bash
-docker run -p 5000:5000 rhasspy/piper:latest --server
-```
-
-**Option B -- From source:**
-
-```bash
-# Clone the Piper server
+# Clone and build the image (no pre-built image is published)
 git clone https://github.com/OHF-Voice/piper1-gpl.git
 cd piper1-gpl
+docker build -t piper-tts .
 
-# Install and run (see repo README for full details)
-pip install -e .
-piper --server --port 5000
+# Download a voice model (one-time)
+docker run -v piper-data:/data piper-tts download en_US-lessac-medium
+
+# Run the server
+docker run -d -p 8881:5000 -v piper-data:/data piper-tts server --model en_US-lessac-medium
+```
+
+**Option B -- pip (quickest):**
+
+```bash
+pip install piper-tts flask
+python -m piper.http_server --host 0.0.0.0 --port 8881 --model en_US-lessac-medium
 ```
 
 On first run Piper downloads the voice model you select. Wait for the server to finish loading before proceeding.
@@ -34,7 +38,7 @@ On first run Piper downloads the voice model you select. Wait for the server to 
 ### 2. Verify the server is running
 
 ```bash
-curl "http://localhost:5000/api/tts?text=Hello+world" --output test.wav
+curl "http://localhost:8881/api/tts?text=Hello+world" --output test.wav
 ```
 
 If you get a valid WAV file back, the server is working.
@@ -52,7 +56,7 @@ tts:
 ./start.sh start
 ```
 
-The agent connects to the Piper server at the `base_url` configured under `tts.piper` in `config.yaml` (default: `http://localhost:5000`).
+The agent connects to the Piper server at the `base_url` configured under `tts.piper` in `config.yaml` (default: `http://localhost:8881`).
 
 ## Configuration
 
@@ -60,7 +64,7 @@ All Piper settings live under `tts.piper` in `config.yaml`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `base_url` | `http://localhost:5000` | Piper TTS server URL |
+| `base_url` | `http://localhost:8881` | Piper TTS server URL |
 
 Voice selection is handled server-side by the Piper server configuration. See the Piper documentation for how to download and switch voice models.
 
@@ -83,8 +87,8 @@ For the full voice catalog, see [Piper voice samples](https://rhasspy.github.io/
 
 ```
 Agent (agent.py)
-  └─ piper_tts.TTS(base_url="http://localhost:5000")
-       └─ HTTP request  ──→  Piper TTS Server (port 5000)
+  └─ piper_tts.TTS(base_url="http://localhost:8881")
+       └─ HTTP request  ──→  Piper TTS Server (port 8881)
                                 └─ ONNX voice model (local inference)
 ```
 
@@ -92,7 +96,7 @@ Agent (agent.py)
 
 | Problem | Solution |
 |---------|----------|
-| `Connection refused` on port 5000 | Make sure the Piper server is running |
+| `Connection refused` on port 8881 | Make sure the Piper server is running |
 | No audio / empty response | Ensure a voice model is installed on the server |
 | Slow first response | The voice model loads on first request; subsequent requests are fast |
 | Poor voice quality | Try a `-high` quality voice model instead of `-medium` or `-low` |

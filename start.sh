@@ -55,7 +55,7 @@ check_livekit_server() {
 }
 
 port_in_use() {
-    lsof -i :"$1" &>/dev/null
+    lsof -i :"$1" -sTCP:LISTEN &>/dev/null
 }
 
 pid_alive() {

@@ -119,7 +119,7 @@ def _build_tts(config: dict):
     elif engine == "piper":
         from livekit.plugins import piper_tts
         return piper_tts.TTS(
-            base_url=engine_cfg.get("base_url", "http://localhost:5000"),
+            base_url=engine_cfg.get("base_url", "http://localhost:8881"),
         )
     else:
         raise ValueError(
