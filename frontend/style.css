@@ -125,6 +125,32 @@ header h1 {
   font-size: 0.7rem;
 }
 
+/* TTS status indicator states */
+.status-indicator.tts-text-only {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.status-indicator.tts-cloud {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-indicator.tts-local-online {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-indicator.tts-local-offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-indicator.tts-checking {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 /* ===== Config Selectors Row (LLM Model + Output Voice) ===== */
 #config-selects-row {
   display: flex;

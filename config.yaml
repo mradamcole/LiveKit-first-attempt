@@ -15,7 +15,7 @@ llm:
     cost: $0.300 / $2.50
 tts:
   engine: kokoro
-  voice: piper_default
+  voice: kokoro_af_sarah
   voices:
   - id: text_only
     label: Text Only

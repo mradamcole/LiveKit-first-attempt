@@ -31,6 +31,7 @@ const promptStatus = document.getElementById('prompt-status');
 const transcriptMessages = document.getElementById('transcript-messages');
 const connectionStatusEl = document.getElementById('connection-status');
 const agentStateEl = document.getElementById('agent-state');
+const ttsStatusEl = document.getElementById('tts-status');
 const agentAudioEl = document.getElementById('agent-audio');
 const modelSelect = document.getElementById('model-select');
 const modelStatus = document.getElementById('model-status');
@@ -92,6 +93,8 @@ async function loadConfig() {
       }
       voiceSelect.disabled = false;
     }
+    // Fetch initial TTS status after config is loaded
+    updateTtsStatus();
   } catch (err) {
     console.error('Failed to load config:', err);
     systemPromptEl.placeholder = 'Failed to load default prompt';
@@ -99,6 +102,35 @@ async function loadConfig() {
 }
 
 loadConfig();
+
+// ===== TTS Status =====
+async function updateTtsStatus() {
+  ttsStatusEl.textContent = 'TTS: checking\u2026';
+  ttsStatusEl.className = 'status-indicator tts-checking';
+  try {
+    const res = await fetch('/api/tts/status');
+    const data = await res.json();
+
+    if (data.engine === 'text_only') {
+      ttsStatusEl.textContent = 'TTS: Text Only';
+      ttsStatusEl.className = 'status-indicator tts-text-only';
+    } else if (data.status === 'online') {
+      ttsStatusEl.textContent = `TTS: ${data.label} (Online)`;
+      ttsStatusEl.className = 'status-indicator tts-local-online';
+    } else if (data.status === 'offline') {
+      ttsStatusEl.textContent = `TTS: ${data.label} (Offline)`;
+      ttsStatusEl.className = 'status-indicator tts-local-offline';
+    } else {
+      // Cloud or other engine with status 'ok'
+      ttsStatusEl.textContent = `TTS: ${data.label}`;
+      ttsStatusEl.className = 'status-indicator tts-cloud';
+    }
+  } catch (err) {
+    console.error('Failed to fetch TTS status:', err);
+    ttsStatusEl.textContent = 'TTS: error';
+    ttsStatusEl.className = 'status-indicator tts-local-offline';
+  }
+}
 
 // ===== Model Selector =====
 modelSelect.addEventListener('change', async () => {
@@ -144,6 +176,8 @@ voiceSelect.addEventListener('change', async () => {
     voiceStatus.textContent = 'Saved — reconnect to use new voice';
     voiceStatus.className = 'config-status-saved';
     setTimeout(() => { voiceStatus.textContent = ''; voiceStatus.className = ''; }, 4000);
+    // Refresh TTS status indicator for the newly selected voice
+    updateTtsStatus();
   } catch (err) {
     console.error('Failed to update voice:', err);
     voiceStatus.textContent = 'Failed to save';

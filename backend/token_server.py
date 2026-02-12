@@ -5,6 +5,7 @@ Endpoints:
   GET  /api/config                 -- returns app config (prompt, models, voices, etc.)
   POST /api/config/model           -- updates the active LLM model
   POST /api/config/voice           -- updates the active TTS voice
+  GET  /api/tts/status             -- returns TTS engine type and health status
   GET  /                           -- serves frontend static files
 """
 
@@ -17,6 +18,8 @@ from livekit.api import AccessToken, VideoGrants, RoomAgentDispatch, RoomConfigu
 from pydantic import BaseModel
 import os
 import yaml
+import urllib.request
+import urllib.error
 
 # Load environment variables from project root .env.local
 load_dotenv(Path(__file__).parent.parent / ".env.local")
@@ -133,6 +136,59 @@ async def set_voice(body: VoiceUpdate):
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     return {"active_voice": body.voice}
+
+
+# Engines that run locally and need a health check
+_LOCAL_ENGINES = {"kokoro", "piper"}
+
+
+@app.get("/api/tts/status")
+async def tts_status():
+    """Return the active TTS engine type and its health status.
+
+    For local engines (kokoro, piper) this performs a quick HTTP health check
+    against the configured server URL. Cloud engines and text_only always
+    return status 'ok'.
+    """
+    voice_id = config["tts"].get("voice", "kokoro_af_heart")
+
+    # Text-only mode
+    if voice_id == "text_only":
+        return {"engine": "text_only", "status": "ok", "label": "Text Only"}
+
+    # Resolve voice entry
+    voices = config["tts"].get("voices", [])
+    entry = next((v for v in voices if v["id"] == voice_id), None)
+    if entry is None:
+        return {"engine": "unknown", "status": "error", "label": "Unknown voice"}
+
+    engine = entry.get("engine", "unknown")
+    engine_cfg = config["tts"].get(engine, {})
+
+    # Cloud engine -- no health check needed
+    if engine not in _LOCAL_ENGINES:
+        label = engine.capitalize()
+        return {"engine": engine, "status": "ok", "label": f"Cloud ({label})"}
+
+    # Local engine -- perform health check
+    label = engine.capitalize()
+    if engine == "kokoro":
+        base_url = engine_cfg.get("base_url", "http://localhost:8880/v1")
+        health_url = base_url.rstrip("/").rsplit("/v1", 1)[0] + "/v1/models"
+    elif engine == "piper":
+        base_url = engine_cfg.get("base_url", "http://localhost:8881")
+        health_url = base_url.rstrip("/") + "/voices"
+    else:
+        health_url = None
+
+    if health_url:
+        try:
+            urllib.request.urlopen(health_url, timeout=3)
+            return {"engine": engine, "status": "online", "label": label}
+        except (urllib.error.URLError, OSError):
+            return {"engine": engine, "status": "offline", "label": label}
+
+    return {"engine": engine, "status": "unknown", "label": label}
 
 
 # Serve frontend static files (must be last -- catches all unmatched routes)
