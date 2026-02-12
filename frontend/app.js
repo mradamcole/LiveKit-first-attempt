@@ -34,6 +34,8 @@ const agentStateEl = document.getElementById('agent-state');
 const agentAudioEl = document.getElementById('agent-audio');
 const modelSelect = document.getElementById('model-select');
 const modelStatus = document.getElementById('model-status');
+const voiceSelect = document.getElementById('voice-select');
+const voiceStatus = document.getElementById('voice-status');
 const browserWarning = document.getElementById('browser-warning');
 const appEl = document.getElementById('app');
 
@@ -77,6 +79,19 @@ async function loadConfig() {
       }
       modelSelect.disabled = false;
     }
+
+    // Populate voice dropdown
+    if (data.voices && data.voices.length) {
+      voiceSelect.innerHTML = '';
+      for (const v of data.voices) {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = v.label;
+        if (v.id === data.active_voice) opt.selected = true;
+        voiceSelect.appendChild(opt);
+      }
+      voiceSelect.disabled = false;
+    }
   } catch (err) {
     console.error('Failed to load config:', err);
     systemPromptEl.placeholder = 'Failed to load default prompt';
@@ -101,13 +116,39 @@ modelSelect.addEventListener('change', async () => {
       throw new Error(err.detail || 'Failed');
     }
     modelStatus.textContent = 'Saved — reconnect to use new model';
-    modelStatus.className = 'model-status-saved';
+    modelStatus.className = 'config-status-saved';
     setTimeout(() => { modelStatus.textContent = ''; modelStatus.className = ''; }, 4000);
   } catch (err) {
     console.error('Failed to update model:', err);
     modelStatus.textContent = 'Failed to save';
-    modelStatus.className = 'model-status-error';
+    modelStatus.className = 'config-status-error';
     setTimeout(() => { modelStatus.textContent = ''; modelStatus.className = ''; }, 3000);
+  }
+});
+
+// ===== Voice Selector =====
+voiceSelect.addEventListener('change', async () => {
+  const newVoice = voiceSelect.value;
+  voiceStatus.textContent = 'Saving...';
+  voiceStatus.className = '';
+  try {
+    const res = await fetch('/api/config/voice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice: newVoice }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed');
+    }
+    voiceStatus.textContent = 'Saved — reconnect to use new voice';
+    voiceStatus.className = 'config-status-saved';
+    setTimeout(() => { voiceStatus.textContent = ''; voiceStatus.className = ''; }, 4000);
+  } catch (err) {
+    console.error('Failed to update voice:', err);
+    voiceStatus.textContent = 'Failed to save';
+    voiceStatus.className = 'config-status-error';
+    setTimeout(() => { voiceStatus.textContent = ''; voiceStatus.className = ''; }, 3000);
   }
 });
 

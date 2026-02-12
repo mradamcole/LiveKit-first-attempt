@@ -52,24 +52,46 @@ def _build_llm(config: dict):
 
 
 def _build_tts(config: dict):
-    """Return a TTS plugin instance based on config['tts']['engine'].
+    """Return a TTS plugin instance based on the selected voice entry.
 
-    Imports are lazy so you only need the pip package for the engine you use.
-    Returns None if the TTS engine is unavailable (allows text-only mode).
+    The active voice is read from config['tts']['voice']. Each voice entry
+    in config['tts']['voices'] carries an 'engine' field that determines
+    which TTS backend to use. Engine-specific settings (base_url, model,
+    speed, etc.) are read from the per-engine config blocks.
+
+    Returns None for 'text_only' or if the chosen engine is unavailable.
 
     Supported engines:
       - cartesia  : Cloud TTS (requires CARTESIA_API_KEY)
       - kokoro    : Local TTS via Kokoro-FastAPI server (OpenAI-compatible)
       - piper     : Local TTS via self-hosted Piper server
     """
-    engine = config["tts"]["engine"]
+    voice_id = config["tts"].get("voice", "kokoro_af_heart")
+
+    # Text-only mode — no TTS
+    if voice_id == "text_only":
+        logger.info("Voice set to text_only — skipping TTS")
+        return None
+
+    # Look up the voice entry in the voices list
+    voices = config["tts"].get("voices", [])
+    entry = next((v for v in voices if v["id"] == voice_id), None)
+    if entry is None:
+        raise ValueError(
+            f"Unknown voice '{voice_id}'. "
+            f"Available: {[v['id'] for v in voices]}"
+        )
+
+    engine = entry["engine"]
     engine_cfg = config["tts"].get(engine, {})
+    # The voice entry's voice_id overrides the engine-level default
+    voice_param = entry.get("voice_id") or engine_cfg.get("voice")
 
     if engine == "cartesia":
         from livekit.plugins import cartesia
         return cartesia.TTS(
             model=engine_cfg.get("model", "sonic-3"),
-            voice=engine_cfg.get("voice"),
+            voice=voice_param,
         )
     elif engine == "kokoro":
         base_url = engine_cfg.get("base_url", "http://localhost:8880/v1")
@@ -89,7 +111,7 @@ def _build_tts(config: dict):
         # so we reuse the OpenAI TTS plugin with a custom base_url.
         return openai_plugin.TTS(
             model=engine_cfg.get("model", "kokoro"),
-            voice=engine_cfg.get("voice", "af_heart"),
+            voice=voice_param or "af_heart",
             speed=engine_cfg.get("speed", 1.0),
             base_url=base_url,
             api_key=engine_cfg.get("api_key", "not-needed"),

@@ -15,6 +15,45 @@ llm:
     cost: $0.300 / $2.50
 tts:
   engine: kokoro
+  voice: text_only
+  voices:
+  - id: text_only
+    label: Text Only
+  - id: kokoro_af_heart
+    label: 'Kokoro: Heart (Female)'
+    engine: kokoro
+    voice_id: af_heart
+  - id: kokoro_af_bella
+    label: 'Kokoro: Bella (Female)'
+    engine: kokoro
+    voice_id: af_bella
+  - id: kokoro_af_sarah
+    label: 'Kokoro: Sarah (Female)'
+    engine: kokoro
+    voice_id: af_sarah
+  - id: kokoro_am_adam
+    label: 'Kokoro: Adam (Male)'
+    engine: kokoro
+    voice_id: am_adam
+  - id: kokoro_am_michael
+    label: 'Kokoro: Michael (Male)'
+    engine: kokoro
+    voice_id: am_michael
+  - id: kokoro_bf_emma
+    label: 'Kokoro: Emma (British Female)'
+    engine: kokoro
+    voice_id: bf_emma
+  - id: kokoro_bm_george
+    label: 'Kokoro: George (British Male)'
+    engine: kokoro
+    voice_id: bm_george
+  - id: cartesia_sonic
+    label: 'Cartesia: Sonic 3'
+    engine: cartesia
+    voice_id: 9626c31c-bec5-4cca-baa8-f8ba9e84c8bc
+  - id: piper_default
+    label: Piper (Local)
+    engine: piper
   cartesia:
     model: sonic-3
     voice: 9626c31c-bec5-4cca-baa8-f8ba9e84c8bc

@@ -2,8 +2,9 @@
 
 Endpoints:
   GET  /api/token?identity=<name>  -- returns { token, url } JWT for room access
-  GET  /api/config                 -- returns app config (prompt, models, etc.)
+  GET  /api/config                 -- returns app config (prompt, models, voices, etc.)
   POST /api/config/model           -- updates the active LLM model
+  POST /api/config/voice           -- updates the active TTS voice
   GET  /                           -- serves frontend static files
 """
 
@@ -71,6 +72,8 @@ async def get_config():
         "room_name": config["app"]["room_name"],
         "active_model": config["llm"]["model"],
         "models": config["llm"].get("models", []),
+        "active_voice": config["tts"].get("voice", "kokoro_af_heart"),
+        "voices": config["tts"].get("voices", []),
     }
 
 
@@ -101,6 +104,35 @@ async def set_model(body: ModelUpdate):
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     return {"active_model": body.model}
+
+
+class VoiceUpdate(BaseModel):
+    voice: str
+
+
+@app.post("/api/config/voice")
+async def set_voice(body: VoiceUpdate):
+    """Update the active TTS voice.
+
+    Validates against the voices list in config, updates the in-memory config,
+    and persists the change to config.yaml so the agent picks it up on the
+    next session.
+    """
+    allowed_ids = {v["id"] for v in config["tts"].get("voices", [])}
+    if body.voice not in allowed_ids:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown voice '{body.voice}'. Allowed: {sorted(allowed_ids)}",
+        )
+
+    config["tts"]["voice"] = body.voice
+
+    # Persist to disk so the agent reads the new voice on next session
+    with open(_CONFIG_PATH, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    return {"active_voice": body.voice}
 
 
 # Serve frontend static files (must be last -- catches all unmatched routes)

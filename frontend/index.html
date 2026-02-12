@@ -17,13 +17,24 @@
       </div>
     </header>
 
-    <section id="model-select-section">
-      <label for="model-select">LLM Model</label>
-      <div id="model-select-row">
-        <select id="model-select" disabled>
-          <option value="">Loading models...</option>
-        </select>
-        <span id="model-status"></span>
+    <section id="config-selects-row">
+      <div class="config-select-group">
+        <label for="model-select">LLM Model</label>
+        <div class="config-select-inner">
+          <select id="model-select" disabled>
+            <option value="">Loading models...</option>
+          </select>
+          <span id="model-status"></span>
+        </div>
+      </div>
+      <div class="config-select-group">
+        <label for="voice-select">Output Voice</label>
+        <div class="config-select-inner">
+          <select id="voice-select" disabled>
+            <option value="">Loading voices...</option>
+          </select>
+          <span id="voice-status"></span>
+        </div>
       </div>
     </section>
 

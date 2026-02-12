@@ -125,15 +125,23 @@ header h1 {
   font-size: 0.7rem;
 }
 
-/* ===== Model Selector ===== */
-#model-select-section {
+/* ===== Config Selectors Row (LLM Model + Output Voice) ===== */
+#config-selects-row {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
-#model-select-section label {
+.config-select-group {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.config-select-group label {
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -142,13 +150,14 @@ header h1 {
   white-space: nowrap;
 }
 
-#model-select-row {
+.config-select-inner {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-#model-select {
+.config-select-group select {
+  flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -166,27 +175,27 @@ header h1 {
   padding-right: 2rem;
 }
 
-#model-select:focus {
+.config-select-group select:focus {
   outline: none;
   border-color: var(--primary);
 }
 
-#model-select:disabled {
+.config-select-group select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-#model-status {
+.config-select-inner span {
   font-size: 0.75rem;
   white-space: nowrap;
   min-height: 1rem;
 }
 
-.model-status-saved {
+.config-status-saved {
   color: var(--success);
 }
 
-.model-status-error {
+.config-status-error {
   color: var(--danger);
 }
 
