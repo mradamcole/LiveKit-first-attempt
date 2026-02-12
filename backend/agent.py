@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from livekit.agents import AgentServer, AgentSession, Agent, room_io, JobContext
 from livekit.plugins import openai as openai_plugin
 from livekit import rtc
+import asyncio
 import yaml
 import logging
 
@@ -145,6 +146,22 @@ async def entrypoint(ctx: JobContext):
         except RuntimeError:
             logger.debug("Interrupt called but no active generation to stop")
         return "ok"
+
+    # Forward LLM / TTS errors to the frontend so they appear in the UI
+    @session.on("error")
+    def on_error(ev):
+        error = ev.error
+        # Build a human-readable message from the underlying exception
+        inner = getattr(error, "error", None) or error
+        msg = str(inner)
+        # For API errors, prefer the shorter body/message if available
+        body = getattr(inner, "body", None)
+        if body:
+            msg = str(body)
+        logger.warning("Forwarding error to frontend: %s", msg)
+        asyncio.ensure_future(
+            ctx.room.local_participant.send_text(msg, topic="lk.error")
+        )
 
     # If TTS is unavailable, disable audio output so the
     # TranscriptSynchronizer doesn't block text waiting for audio frames.

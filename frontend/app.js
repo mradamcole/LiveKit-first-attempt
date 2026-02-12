@@ -197,6 +197,15 @@ async function connect() {
     }
   });
 
+  // Receive LLM / TTS errors from the agent via text stream
+  room.registerTextStreamHandler('lk.error', async (reader, participantIdentity) => {
+    const text = await reader.readAll();
+    if (text.trim()) {
+      removeThinkingBubble();
+      addMessage('error', text.trim());
+    }
+  });
+
   // --- Now connect ---
   await room.connect(url, token);
 
@@ -477,7 +486,7 @@ function addMessage(role, text) {
 
   const label = document.createElement('span');
   label.className = 'label';
-  label.textContent = role === 'user' ? 'You' : 'Agent';
+  label.textContent = role === 'user' ? 'You' : role === 'error' ? 'Error' : 'Agent';
 
   const content = document.createTextNode(text);
 

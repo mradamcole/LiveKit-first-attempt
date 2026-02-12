@@ -1,5 +1,5 @@
 llm:
-  model: gemini-1.5-flash
+  model: gpt-4o-mini
   models:
   - id: gpt-4o-mini
     label: GPT-4o Mini
