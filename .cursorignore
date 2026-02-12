@@ -5,3 +5,6 @@
 !.env.development
 !.env.production
 !.env.test
+
+# Override .gitignore to allow Cursor AI to browse the virtual environment
+!backend/venv/

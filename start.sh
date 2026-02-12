@@ -164,6 +164,19 @@ start_agent() {
 
 # ── Stop functions ───────────────────────────────────────────
 
+kill_tree() {
+    # Recursively kill a process and all its descendants
+    local target_pid="$1"
+    local sig="${2:-TERM}"
+    # Find all descendants first, then kill bottom-up
+    local children
+    children=$(pgrep -P "$target_pid" 2>/dev/null || true)
+    for child in $children; do
+        kill_tree "$child" "$sig"
+    done
+    kill -"$sig" "$target_pid" 2>/dev/null || true
+}
+
 stop_service() {
     local name="$1"
     local pid
@@ -175,8 +188,9 @@ stop_service() {
     fi
 
     if pid_alive "$pid"; then
-        log_info "Stopping $name (PID $pid) ..."
-        kill "$pid" 2>/dev/null
+        log_info "Stopping $name (PID $pid) and all child processes ..."
+        # Kill the entire process tree (parent + all descendants)
+        kill_tree "$pid" TERM
         # Wait up to 5 seconds for graceful shutdown
         for i in {1..10}; do
             if ! pid_alive "$pid"; then
@@ -187,7 +201,7 @@ stop_service() {
         # Force kill if still alive
         if pid_alive "$pid"; then
             log_warn "$name didn't stop gracefully, force killing ..."
-            kill -9 "$pid" 2>/dev/null
+            kill_tree "$pid" 9
         fi
         log_info "$name stopped"
     else

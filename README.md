@@ -9,7 +9,7 @@ Browser (HTML/JS)                LiveKit Room              Python Agent
 ─────────────────               ──────────────             ─────────────
 Mic → Web Speech API                                       
   → interim/final text          ──sendText('lk.chat')──→   receives text
-  → display in transcript                                  → LLM (OpenAI)
+  → display in transcript                                  → LLM (OpenAI / Gemini)
                                 ←─lk.transcription─────    → streams response text
   → display agent response                                 → TTS (configurable)
   → play agent audio            ←─TTS audio track──────    → publishes audio
@@ -21,7 +21,7 @@ System prompt textarea          ──performRpc──────────�
 
 - **Python 3.9+**
 - **Chrome or Edge** browser (Web Speech API requirement)
-- **API keys** for OpenAI (required) and Cartesia (only if using `cartesia` TTS engine)
+- **API keys** for OpenAI or Google (depending on chosen LLM) and Cartesia (only if using `cartesia` TTS engine)
 
 ## Quick Start
 
@@ -76,8 +76,9 @@ Edit `.env.local` in the project root with your actual credentials. If you start
 LIVEKIT_URL=ws://localhost:7880
 LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=secret
-OPENAI_API_KEY=sk-your-openai-key
-CARTESIA_API_KEY=your-cartesia-key   # only needed when tts.engine is "cartesia"
+OPENAI_API_KEY=sk-your-openai-key      # needed when llm.model is an OpenAI model
+GOOGLE_API_KEY=your-google-api-key     # needed when llm.model is a Gemini model
+CARTESIA_API_KEY=your-cartesia-key     # only needed when tts.engine is "cartesia"
 ```
 
 Optionally edit `config.yaml` to change the TTS engine, LLM model, voice, default system prompt, or room name. See the [TTS Engine](#tts-engine) section below for details.
@@ -169,7 +170,7 @@ Navigate to **http://localhost:3000** in Chrome or Edge.
 
 | Key | Description |
 |-----|-------------|
-| `llm.model` | OpenAI model name (e.g., `gpt-4.1-mini`) |
+| `llm.model` | LLM model name — OpenAI (e.g., `gpt-4o-mini`) or Google (e.g., `gemini-1.5-flash`) |
 | `tts.engine` | TTS engine to use: `cartesia`, `kokoro`, or `piper` |
 | `tts.cartesia.*` | Cartesia-specific settings (`model`, `voice`) |
 | `tts.kokoro.*` | Kokoro-specific settings (`base_url`, `model`, `voice`, `speed`) |
@@ -215,7 +216,8 @@ tts:
 | `LIVEKIT_URL` | LiveKit server WebSocket URL |
 | `LIVEKIT_API_KEY` | LiveKit API key |
 | `LIVEKIT_API_SECRET` | LiveKit API secret |
-| `OPENAI_API_KEY` | OpenAI API key |
+| `OPENAI_API_KEY` | OpenAI API key (needed when `llm.model` is an OpenAI model) |
+| `GOOGLE_API_KEY` | Google API key (needed when `llm.model` is a Gemini model) |
 | `CARTESIA_API_KEY` | Cartesia API key (only needed when `tts.engine` is `cartesia`) |
 
 ## How It Works
@@ -235,7 +237,7 @@ tts:
 | STT | Browser Web Speech API |
 | Text transport | LiveKit text streams (`lk.chat`, `lk.transcription`) |
 | Prompt updates | LiveKit RPC |
-| LLM | OpenAI (via `livekit-plugins-openai`) |
+| LLM | OpenAI or Google Gemini (configurable via `config.yaml`) |
 | TTS | Cartesia, Kokoro, or Piper (configurable via `config.yaml`) |
 | Agent framework | LiveKit Agents SDK (Python) |
 | Token server | FastAPI |

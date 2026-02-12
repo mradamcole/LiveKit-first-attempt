@@ -32,6 +32,8 @@ const transcriptMessages = document.getElementById('transcript-messages');
 const connectionStatusEl = document.getElementById('connection-status');
 const agentStateEl = document.getElementById('agent-state');
 const agentAudioEl = document.getElementById('agent-audio');
+const modelSelect = document.getElementById('model-select');
+const modelStatus = document.getElementById('model-status');
 const browserWarning = document.getElementById('browser-warning');
 const appEl = document.getElementById('app');
 
@@ -62,6 +64,19 @@ async function loadConfig() {
     const res = await fetch('/api/config');
     const data = await res.json();
     systemPromptEl.value = data.default_system_prompt || '';
+
+    // Populate model dropdown
+    if (data.models && data.models.length) {
+      modelSelect.innerHTML = '';
+      for (const m of data.models) {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.label}  (${m.provider})`;
+        if (m.id === data.active_model) opt.selected = true;
+        modelSelect.appendChild(opt);
+      }
+      modelSelect.disabled = false;
+    }
   } catch (err) {
     console.error('Failed to load config:', err);
     systemPromptEl.placeholder = 'Failed to load default prompt';
@@ -69,6 +84,32 @@ async function loadConfig() {
 }
 
 loadConfig();
+
+// ===== Model Selector =====
+modelSelect.addEventListener('change', async () => {
+  const newModel = modelSelect.value;
+  modelStatus.textContent = 'Saving...';
+  modelStatus.className = '';
+  try {
+    const res = await fetch('/api/config/model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: newModel }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed');
+    }
+    modelStatus.textContent = 'Saved — reconnect to use new model';
+    modelStatus.className = 'model-status-saved';
+    setTimeout(() => { modelStatus.textContent = ''; modelStatus.className = ''; }, 4000);
+  } catch (err) {
+    console.error('Failed to update model:', err);
+    modelStatus.textContent = 'Failed to save';
+    modelStatus.className = 'model-status-error';
+    setTimeout(() => { modelStatus.textContent = ''; modelStatus.className = ''; }, 3000);
+  }
+});
 
 // ===== LiveKit Connection =====
 async function connect() {

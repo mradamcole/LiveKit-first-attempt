@@ -17,6 +17,16 @@
       </div>
     </header>
 
+    <section id="model-select-section">
+      <label for="model-select">LLM Model</label>
+      <div id="model-select-row">
+        <select id="model-select" disabled>
+          <option value="">Loading models...</option>
+        </select>
+        <span id="model-status"></span>
+      </div>
+    </section>
+
     <section id="system-prompt-section">
       <label for="system-prompt">System Prompt</label>
       <textarea id="system-prompt" rows="4" placeholder="Loading..."></textarea>
